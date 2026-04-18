@@ -2,15 +2,14 @@
 
 A minimalist, high-performance screen dimmer for Windows, optimized for OLED displays.
 
-Unlike standard dimmers that just put a grey box over your screen, **Nighttime** uses a dual-engine approach to keep your OLED blacks deep while protecting your eyes.
-
 ## ✨ Key Features
 
 *   **OLED-Safe Dimming**: Uses a pure black hardware-accelerated overlay. Perfect for keeping contrast high on OLED panels.
 *   **f.lux-style Red Shift**: Uses driver-level Gamma Ramps to suppress blue/green light, making the screen warmer without reducing brightness.
 *   **Ultra Minimalist**: No window clutter. It lives entirely in your system tray.
 *   **Panic Button**: Press `Esc` at any time to instantly restore your screen to 100% brightness and normal color.
-*   **Zero-Lag Performance**: Low-level hooks and optimized GDI+ calls ensure zero impact on your GPU or keyboard speed.
+*   **Zero-Lag Performance**: Uses efficient `SetLayeredWindowAttributes` for real-time responsiveness with zero CPU/GPU overhead.
+*   **HiDPI Aware**: Automatically handles Windows scaling, ensuring the overlay covers the full screen on 4K and Retina displays.
 
 ## 🚀 How to Use
 

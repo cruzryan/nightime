@@ -78,8 +78,8 @@ function onDrag(which, e) {
   e.preventDefault();
   const x    = clamp(getTrackOffset(e), 0, TRACK_W);
   const level = Math.round((x / TRACK_W) * 100);
-  if (which === "dim") setDim(level, false);
-  else                 setRed(level, false);
+  if (which === "dim") setDim(level, true);
+  else                 setRed(level, true);
 }
 
 function startDrag(which, e) {

@@ -19,6 +19,15 @@ import win32api
 import win32gui
 import win32con
 
+# ─── DPI Awareness ───────────────────────────────────────────────────────────
+# Must be set before any GetSystemMetrics / CreateWindow calls, otherwise
+# Windows returns scaled-down logical pixels and the overlay won't cover
+# the full physical screen.
+try:
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)   # PROCESS_PER_MONITOR_DPI_AWARE
+except Exception:
+    ctypes.windll.user32.SetProcessDPIAware()        # Fallback for older Windows
+
 
 # ─── State ───────────────────────────────────────────────────────────────────
 
@@ -93,10 +102,20 @@ def _restore_gamma():
 
 # ─── Overlay Window (dimming only) ───────────────────────────────────────────
 
+_user32 = ctypes.windll.user32
+
 def _overlay_wndproc(hwnd, msg, wparam, lparam):
     if msg == win32con.WM_DESTROY:
         win32gui.PostQuitMessage(0)
         return 0
+    if msg == win32con.WM_ERASEBKGND:
+        # Paint the window solid black — required for SetLayeredWindowAttributes
+        dc = wparam
+        rect = win32gui.GetClientRect(hwnd)
+        brush = win32gui.CreateSolidBrush(0x00000000)  # Black
+        win32gui.FillRect(dc, rect, brush)
+        win32gui.DeleteObject(brush)
+        return 1
     return win32gui.DefWindowProc(hwnd, msg, wparam, lparam)
 
 
@@ -104,10 +123,13 @@ def _create_overlay():
     screen_w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
     screen_h = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
 
+    # Use a solid black brush so the window is fully black
+    black_brush = win32gui.CreateSolidBrush(0x00000000)
+
     wc = win32gui.WNDCLASS()
     wc.lpfnWndProc = _overlay_wndproc
     wc.lpszClassName = "NighttimeOverlayClass"
-    wc.hbrBackground = 0
+    wc.hbrBackground = black_brush
     wc.style = win32con.CS_VREDRAW | win32con.CS_HREDRAW
     win32gui.RegisterClass(wc)
 
@@ -123,64 +145,19 @@ def _create_overlay():
         0, 0, screen_w, screen_h,
         None, None, None, None,
     )
+
+    # Initialize with fully transparent so it starts hidden
+    win32gui.SetLayeredWindowAttributes(hwnd, 0, 0, win32con.LWA_ALPHA)
     win32gui.ShowWindow(hwnd, win32con.SW_HIDE)
     return hwnd
 
 
-# Ctypes structs (defined once)
-class _BITMAPINFOHEADER(ctypes.Structure):
-    _fields_ = [
-        ("biSize",          ctypes.c_uint32),
-        ("biWidth",         ctypes.c_long),
-        ("biHeight",        ctypes.c_long),
-        ("biPlanes",        ctypes.c_short),
-        ("biBitCount",      ctypes.c_short),
-        ("biCompression",   ctypes.c_uint32),
-        ("biSizeImage",     ctypes.c_uint32),
-        ("biXPelsPerMeter", ctypes.c_long),
-        ("biYPelsPerMeter", ctypes.c_long),
-        ("biClrUsed",       ctypes.c_uint32),
-        ("biClrImportant",  ctypes.c_uint32),
-    ]
-
-class _BITMAPINFO(ctypes.Structure):
-    _fields_ = [("bmiHeader", _BITMAPINFOHEADER), ("bmiColors", ctypes.c_byte * 4)]
-
-class _BLENDFUNCTION(ctypes.Structure):
-    _fields_ = [
-        ("BlendOp",             ctypes.c_byte),
-        ("BlendFlags",          ctypes.c_byte),
-        ("SourceConstantAlpha", ctypes.c_byte),
-        ("AlphaFormat",         ctypes.c_byte),
-    ]
-
-class _POINT(ctypes.Structure):
-    _fields_ = [("x", ctypes.c_long), ("y", ctypes.c_long)]
-
-class _SIZE(ctypes.Structure):
-    _fields_ = [("cx", ctypes.c_long), ("cy", ctypes.c_long)]
-
-_gdi32  = ctypes.windll.gdi32
-_user32 = ctypes.windll.user32
-
-_gdi32.CreateCompatibleDC.argtypes  = [wt.HDC]
-_gdi32.CreateCompatibleDC.restype   = wt.HDC
-_gdi32.CreateDIBSection.restype     = wt.HBITMAP
-_gdi32.SelectObject.argtypes        = [wt.HDC, wt.HGDIOBJ]
-_gdi32.SelectObject.restype         = wt.HGDIOBJ
-_gdi32.DeleteObject.argtypes        = [wt.HGDIOBJ]
-_gdi32.DeleteDC.argtypes            = [wt.HDC]
-_user32.UpdateLayeredWindow.argtypes = [
-    wt.HWND, wt.HDC,
-    ctypes.POINTER(_POINT), ctypes.POINTER(_SIZE),
-    wt.HDC, ctypes.POINTER(_POINT),
-    wt.COLORREF, ctypes.POINTER(_BLENDFUNCTION), wt.DWORD,
-]
-_user32.UpdateLayeredWindow.restype = wt.BOOL
-
-
 def _update_overlay():
-    """Update the dim overlay. Pure black, alpha = dim level. No color."""
+    """Update the dim overlay using SetLayeredWindowAttributes.
+    
+    Pure black window with alpha = dim_level mapped to 0–255.
+    This is much simpler and more reliable than per-pixel UpdateLayeredWindow.
+    """
     global _overlay_hwnd
     if _overlay_hwnd is None:
         return
@@ -192,53 +169,12 @@ def _update_overlay():
         _user32.ShowWindow(_overlay_hwnd, win32con.SW_HIDE)
         return
 
-    screen_w = win32api.GetSystemMetrics(win32con.SM_CXSCREEN)
-    screen_h = win32api.GetSystemMetrics(win32con.SM_CYSCREEN)
+    # Map 0–100 to 0–255 alpha. At 100% dim, alpha must be exactly 255 (fully opaque black).
+    alpha = int(round(dim * 255.0 / 100.0))
+    alpha = max(0, min(255, alpha))
 
-    alpha = int(dim * 255 // 100)
-    # Pure black overlay — [B=0, G=0, R=0, A=alpha]
-    pixel = bytes([0, 0, 0, alpha])
-    buf = pixel * (screen_w * screen_h)
-
-    bmi = _BITMAPINFO()
-    bmi.bmiHeader.biSize        = ctypes.sizeof(_BITMAPINFOHEADER)
-    bmi.bmiHeader.biWidth       = screen_w
-    bmi.bmiHeader.biHeight      = -screen_h
-    bmi.bmiHeader.biPlanes      = 1
-    bmi.bmiHeader.biBitCount    = 32
-    bmi.bmiHeader.biCompression = win32con.BI_RGB
-
-    hdc_screen = win32gui.GetDC(0)
-    memdc      = _gdi32.CreateCompatibleDC(hdc_screen)
-
-    pbits   = ctypes.c_void_p()
-    hbitmap = _gdi32.CreateDIBSection(
-        memdc, ctypes.byref(bmi),
-        win32con.DIB_RGB_COLORS, ctypes.byref(pbits), None, 0
-    )
-
-    if hbitmap and pbits.value:
-        old_bmp = _gdi32.SelectObject(memdc, hbitmap)
-        ctypes.memmove(pbits.value, buf, len(buf))
-
-        blend = _BLENDFUNCTION(win32con.AC_SRC_OVER, 0, 255, 1)
-        ptDst = _POINT(0, 0)
-        ptSrc = _POINT(0, 0)
-        size  = _SIZE(screen_w, screen_h)
-
-        _user32.ShowWindow(_overlay_hwnd, win32con.SW_SHOWNOACTIVATE)
-        _user32.UpdateLayeredWindow(
-            _overlay_hwnd, hdc_screen,
-            ctypes.byref(ptDst), ctypes.byref(size),
-            memdc, ctypes.byref(ptSrc),
-            0, ctypes.byref(blend), win32con.ULW_ALPHA,
-        )
-
-        _gdi32.SelectObject(memdc, old_bmp)
-        _gdi32.DeleteObject(hbitmap)
-
-    _gdi32.DeleteDC(memdc)
-    win32gui.ReleaseDC(0, hdc_screen)
+    win32gui.SetLayeredWindowAttributes(_overlay_hwnd, 0, alpha, win32con.LWA_ALPHA)
+    _user32.ShowWindow(_overlay_hwnd, win32con.SW_SHOWNOACTIVATE)
 
 
 # ─── Keyboard Hook ────────────────────────────────────────────────────────────

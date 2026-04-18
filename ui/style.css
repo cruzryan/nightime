@@ -1,0 +1,232 @@
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #0d0d12;
+  --surface:   #14141c;
+  --border:    #252535;
+  --accent:    #7c6fff;
+  --accent-lo: rgba(124, 111, 255, 0.15);
+  --red-lo:    rgba(255, 80, 80, 0.15);
+  --text:      #e0dff0;
+  --text-dim:  #6e6e8a;
+  --thumb:     #9d92ff;
+  --red-thumb: #ff7070;
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+  user-select: none;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 0 22px 18px;
+  gap: 6px;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 0 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+}
+
+.logo { display: flex; align-items: center; gap: 9px; }
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: #f0efff;
+}
+
+.badge {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--accent-lo);
+  border: 1px solid rgba(124, 111, 255, 0.3);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.section { padding: 10px 0; }
+
+.slider-row { display: flex; flex-direction: column; gap: 8px; }
+
+.slider-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+
+.label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  min-width: 36px;
+  text-align: right;
+}
+
+.track-wrap {
+  position: relative;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+}
+
+.track-bg {
+  position: absolute;
+  left: 0; right: 0;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.track-fill {
+  position: absolute;
+  left: 0;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #5a50e0, var(--accent));
+  pointer-events: none;
+  transition: width 0.02s linear;
+}
+
+.track-fill.red-fill {
+  background: linear-gradient(90deg, #c03030, #ff6060);
+}
+
+.thumb {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--thumb);
+  box-shadow: 0 0 0 3px var(--accent-lo), 0 2px 8px rgba(0,0,0,0.4);
+  cursor: grab;
+  transition: transform 0.08s ease, box-shadow 0.08s ease;
+  will-change: left;
+}
+
+.thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 0 4px var(--accent-lo), 0 3px 12px rgba(0,0,0,0.5);
+}
+
+.thumb.red-thumb {
+  background: var(--red-thumb);
+  box-shadow: 0 0 0 3px var(--red-lo), 0 2px 8px rgba(0,0,0,0.4);
+}
+
+.thumb.red-thumb:hover {
+  box-shadow: 0 0 0 4px var(--red-lo), 0 3px 12px rgba(0,0,0,0.5);
+}
+
+.preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.preview-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-dim);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+
+.preview-swatch {
+  flex: 1;
+  height: 28px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #000;
+  transition: background 0.1s ease;
+}
+
+.footer {
+  display: flex;
+  gap: 10px;
+  margin-top: auto;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+  -webkit-app-region: no-drag;
+}
+
+.btn {
+  flex: 1;
+  padding: 9px 0;
+  border: none;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.btn:active { transform: scale(0.97); }
+
+.btn-secondary {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover { background: #1c1c28; }
+
+.btn-danger {
+  background: rgba(220, 60, 60, 0.18);
+  color: #ff9090;
+  border: 1px solid rgba(220, 60, 60, 0.3);
+}
+
+.btn-danger:hover { background: rgba(220, 60, 60, 0.28); }
+
+.pywebview-drag-region {
+  -webkit-app-region: drag;
+}
+
+.close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--text-dim);
+  transition: background 0.15s, color 0.15s;
+  -webkit-app-region: no-drag;
+}
+
+.close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text);
+}

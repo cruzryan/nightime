@@ -1,0 +1,27 @@
+# PyInstaller / Build
+build/
+dist/
+*.spec
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+ENV/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local Dev
+.vscode/
+.idea/
+*.log
+
+# Windows specific
+Thumbs.db
+desktop.ini
